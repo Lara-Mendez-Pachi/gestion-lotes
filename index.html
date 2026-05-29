@@ -360,6 +360,7 @@ tbody td{padding:10px 13px;font-size:13px}
 
 <script>
 // ===== CONFIG =====
+const CLAVE_API = '722445';
 const API = 'https://script.google.com/macros/s/AKfycbxqDlfqagmxSAwwUv6ChN-KmVF0SWyuj3eyTbdRnUsgkuJB_qluMiEVs4p3IKpj-RwoeA/exec';
 
 // ===== LOCAL STATE (cache) =====
@@ -383,11 +384,10 @@ function setSyncState(state, msg) {
 
 // ===== API CALLS =====
 async function sheetRead(sheetName) {
-  const url = `${API}?action=read&sheet=${sheetName}`;
+  const url = API + '?action=read&sheet=' + sheetName + '&clave=' + CLAVE_API;
   const r = await fetch(url);
   const j = await r.json();
   if (!j.ok) throw new Error(j.error);
-  // Convert rows to objects using first row as headers
   const [headers, ...rows] = j.data;
   return rows.filter(r => r.some(c => c !== '')).map(row => {
     const obj = {};
@@ -397,7 +397,7 @@ async function sheetRead(sheetName) {
 }
 
 async function sheetAppend(sheetName, row) {
-  const url = `${API}?action=append&sheet=${sheetName}&row=${encodeURIComponent(JSON.stringify(row))}`;
+  const url = API + '?action=append&sheet=' + sheetName + '&clave=' + CLAVE_API + '&row=' + encodeURIComponent(JSON.stringify(row));
   const r = await fetch(url);
   const j = await r.json();
   if (!j.ok) throw new Error(j.error);
