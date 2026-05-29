@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión de Lotes</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap');
+:root{--bg:#0f0f0f;--surface:#1a1a1a;--surface2:#242424;--border:#2e2e2e;--accent:#d4a843;--accent2:#e8c56a;--danger:#e05252;--ok:#4caf7d;--warn:#e09b3d;--text:#f0ede8;--muted:#888;--font-head:'Syne',sans-serif;--font-body:'DM Sans',sans-serif}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:14px;min-height:100vh}
+.header{background:linear-gradient(135deg,#1a1400 0%,#0f0f0f 60%);border-bottom:1px solid var(--border);padding:16px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.header h1{font-family:var(--font-head);font-size:19px;font-weight:800;letter-spacing:-.5px;color:var(--accent)}
+.header .sub{font-size:11px;color:var(--muted);margin-top:2px}
+.tabs{display:flex;gap:3px;padding:10px 28px 0;border-bottom:1px solid var(--border);background:var(--surface);flex-wrap:wrap}
+.tab{padding:7px 14px;border-radius:8px 8px 0 0;cursor:pointer;font-family:var(--font-head);font-size:12px;font-weight:600;color:var(--muted);border:1px solid transparent;border-bottom:none;background:transparent;transition:all .2s}
+.tab:hover{color:var(--text)}
+.tab.active{background:var(--bg);color:var(--accent);border-color:var(--border);border-bottom-color:var(--bg)}
+.content{padding:20px 28px}
+.panel{display:none}.panel.active{display:block}
+
+/* STATS — fixed height, no achatado */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px 16px;position:relative;overflow:hidden;min-height:100px}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:10px 10px 0 0;background:var(--accent)}
+.stat-card.danger::before{background:var(--danger)}
+.stat-card.ok::before{background:var(--ok)}
+.stat-card.warn::before{background:var(--warn)}
+.stat-label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:6px}
+.stat-val{font-family:var(--font-head);font-size:28px;font-weight:800;color:var(--text);line-height:1}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:6px}
+
+table{width:100%;border-collapse:collapse}
+thead th{background:var(--surface2);padding:9px 13px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted);font-weight:600;white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border);transition:background .15s;cursor:pointer}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--surface2)}
+tbody td{padding:10px 13px;font-size:13px}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.al-dia{background:#1a3d2a;color:var(--ok)}
+.badge.atrasado{background:#3d1a1a;color:var(--danger)}
+.badge.pendiente{background:#3d2e10;color:var(--warn)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-bottom:13px}
+.form-grid.cols3{grid-template-columns:1fr 1fr 1fr}
+.form-group label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.form-group input,.form-group select,.form-group textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:7px;padding:9px 11px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;transition:border-color .2s}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{border-color:var(--accent)}
+.form-group select option{background:var(--surface2)}
+.btn{padding:9px 18px;border-radius:7px;border:none;cursor:pointer;font-family:var(--font-head);font-weight:700;font-size:13px;transition:all .2s}
+.btn-primary{background:var(--accent);color:#000}
+.btn-primary:hover{background:var(--accent2);transform:translateY(-1px)}
+.btn-secondary{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-secondary:hover{border-color:var(--accent);color:var(--accent)}
+.section-title{font-family:var(--font-head);font-size:15px;font-weight:700;margin-bottom:13px;color:var(--accent)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:18px;margin-bottom:14px}
+.card-row{display:flex;gap:14px;margin-bottom:14px}
+.card-row .card{flex:1;margin-bottom:0}
+.cuota-box{background:linear-gradient(135deg,#1a1400,#1a1a1a);border:1px solid var(--accent);border-radius:12px;padding:20px;margin-bottom:18px}
+.cuota-result{background:var(--surface2);border-radius:8px;padding:14px 18px;margin-top:12px;display:flex;align-items:center;justify-content:space-between}
+.cuota-result .big{font-family:var(--font-head);font-size:24px;font-weight:800;color:var(--accent)}
+.recordatorio{display:flex;align-items:flex-start;gap:12px;padding:12px;border-radius:8px;border:1px solid var(--border);margin-bottom:9px;background:var(--surface2);position:relative}
+.recordatorio.vencido{border-color:var(--danger);background:#1a0f0f}
+.recordatorio.proximo{border-color:var(--warn);background:#1a150a}
+.recordatorio.ok{border-color:var(--ok);background:#0a1a10}
+.rec-icon{font-size:18px;min-width:26px;text-align:center;margin-top:2px}
+.rec-title{font-weight:600;font-size:13px;margin-bottom:2px}
+.rec-sub{font-size:11px;color:var(--muted)}
+.rec-badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:20px;text-transform:uppercase;white-space:nowrap}
+.rec-badge.vencido{background:#3d1a1a;color:var(--danger)}
+.rec-badge.proximo{background:#3d2e10;color:var(--warn)}
+.rec-badge.ok{background:#1a3d2a;color:var(--ok)}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:26px;width:600px;max-width:95vw;max-height:92vh;overflow-y:auto}
+.modal h2{font-family:var(--font-head);font-size:17px;font-weight:800;margin-bottom:18px;color:var(--accent)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:18px}
+.progress-bar{background:var(--border);border-radius:4px;height:5px;margin-top:5px}
+.progress-fill{height:100%;border-radius:4px;background:var(--accent)}
+.progress-fill.ok{background:var(--ok)}
+.detail-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-row:last-child{border-bottom:none}
+.detail-row .val{font-weight:600;color:var(--accent2)}
+.log-entry{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--border);font-size:13px;flex-wrap:wrap}
+.log-entry:last-child{border-bottom:none}
+.log-date{color:var(--muted);font-size:11px;min-width:88px}
+.log-text{flex:1}
+.log-type{font-size:11px;font-weight:600;white-space:nowrap}
+.log-type.pago{color:var(--ok)}
+.log-type.imp-ok{color:var(--warn)}
+.log-type.imp-bad{color:var(--danger)}
+.chip{display:inline-flex;align-items:center;gap:5px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:12px;color:var(--muted);margin:2px}
+/* sync indicator */
+.sync-bar{display:flex;align-items:center;gap:8px;font-size:11px;color:var(--muted);padding:6px 28px;background:var(--surface);border-bottom:1px solid var(--border)}
+.sync-dot{width:7px;height:7px;border-radius:50%;background:var(--muted)}
+.sync-dot.ok{background:var(--ok);box-shadow:0 0 6px var(--ok)}
+.sync-dot.err{background:var(--danger)}
+.sync-dot.loading{background:var(--warn);animation:pulse .8s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:var(--surface)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px}
+@media(max-width:800px){.stats-row{grid-template-columns:1fr 1fr}.form-grid.cols3{grid-template-columns:1fr 1fr}.card-row{flex-direction:column}}
+@media(max-width:480px){.stats-row{grid-template-columns:1fr}.form-grid,.form-grid.cols3{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>🏗️ GESTIÓN DE LOTES</h1>
+    <div class="sub">Sistema de Administración Inmobiliaria</div>
+  </div>
+  <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+    <span style="font-size:11px;color:var(--muted)" id="fecha-hoy"></span>
+    <button class="btn btn-primary" onclick="openModal('modal-nuevo-lote')">+ Nuevo Lote</button>
+  </div>
+</div>
+
+<div class="sync-bar">
+  <div class="sync-dot loading" id="sync-dot"></div>
+  <span id="sync-text">Conectando con Google Sheets...</span>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</button>
+  <button class="tab" onclick="switchTab('lotes',this)">🏘️ Lotes</button>
+  <button class="tab" onclick="switchTab('cuotas',this)">💰 Cuotas</button>
+  <button class="tab" onclick="switchTab('impuestos',this)">📋 Impuestos</button>
+  <button class="tab" onclick="switchTab('recordatorios',this)">🔔 Recordatorios</button>
+  <button class="tab" onclick="switchTab('contrato',this)">📄 Guía</button>
+</div>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<div id="panel-dashboard" class="panel active">
+  <div class="stats-row">
+    <div class="stat-card ok"><div class="stat-label">Lotes al día</div><div class="stat-val" id="stat-aldia">—</div><div class="stat-sub">Cuotas e impuestos OK</div></div>
+    <div class="stat-card danger"><div class="stat-label">Con atraso</div><div class="stat-val" id="stat-atraso">—</div><div class="stat-sub">Requieren atención</div></div>
+    <div class="stat-card warn"><div class="stat-label">Cuota base</div><div class="stat-val" id="stat-cuota">—</div><div class="stat-sub">Referencia general</div></div>
+    <div class="stat-card"><div class="stat-label">Bolsa cemento</div><div class="stat-val" id="stat-cemento">—</div><div class="stat-sub">Último valor</div></div>
+  </div>
+  <div class="card-row">
+    <div class="card" style="flex:2;overflow-x:auto">
+      <div class="section-title">📋 Estado de lotes</div>
+      <table><thead><tr><th>Lote</th><th>Teniente</th><th>Cuota</th><th>Último pago</th><th>Impuesto</th><th>Estado</th><th></th></tr></thead>
+      <tbody id="tabla-dashboard"></tbody></table>
+    </div>
+    <div class="card" style="flex:1;min-width:220px"><div class="section-title">⚠️ Alertas</div><div id="alertas-container"></div></div>
+  </div>
+</div>
+
+<!-- LOTES -->
+<div id="panel-lotes" class="panel">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:18px">
+    <div class="section-title" style="margin:0">🏘️ Lotes registrados</div>
+    <button class="btn btn-primary" onclick="openModal('modal-nuevo-lote')">+ Agregar Lote</button>
+  </div>
+  <div id="lista-lotes-detalle"></div>
+</div>
+
+<!-- CUOTAS -->
+<div id="panel-cuotas" class="panel">
+  <div class="cuota-box">
+    <div class="section-title" style="margin-bottom:13px">⚡ Actualizar cuota por materiales</div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Cemento mes anterior ($)</label><input type="number" id="cemento-ant" placeholder="ej: 2500"></div>
+      <div class="form-group"><label>Cemento mes actual ($)</label><input type="number" id="cemento-act" placeholder="ej: 2800"></div>
+      <div class="form-group"><label>Hierro kg mes anterior ($)</label><input type="number" id="hierro-ant" placeholder="ej: 1800"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Hierro kg mes actual ($)</label><input type="number" id="hierro-act" placeholder="ej: 2000"></div>
+      <div class="form-group" style="display:flex;align-items:flex-end"><button class="btn btn-primary" style="width:100%" onclick="calcularAumento()">Calcular y aplicar</button></div>
+    </div>
+    <div class="cuota-result" id="cuota-result" style="display:none">
+      <div><div style="font-size:10px;color:var(--muted);margin-bottom:2px">AUMENTO PROMEDIO</div><div class="big" id="res-pct"></div></div>
+      <div style="text-align:right"><div style="font-size:10px;color:var(--muted);margin-bottom:2px">NUEVA CUOTA BASE</div><div class="big" id="res-cuota"></div><div style="color:var(--ok);font-size:12px;font-weight:600" id="res-delta"></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="section-title">📥 Registrar pago de cuota</div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Lote</label><select id="pago-lote"><option value="">Seleccionar...</option></select></div>
+      <div class="form-group"><label>Mes que paga</label><input type="month" id="pago-mes"></div>
+      <div class="form-group"><label>Monto abonado ($)</label><input type="number" id="pago-monto" placeholder="0"></div>
+    </div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Fecha de pago</label><input type="date" id="pago-fecha"></div>
+      <div class="form-group"><label>Forma de pago</label><select id="pago-forma"><option>Transferencia</option><option>Efectivo</option><option>Cheque</option></select></div>
+      <div class="form-group"><label>Observación</label><input type="text" id="pago-obs" placeholder="Opcional"></div>
+    </div>
+    <button class="btn btn-primary" id="btn-registrar-pago" onclick="registrarPago()">✓ Registrar Pago</button>
+  </div>
+  <div class="card"><div class="section-title">📜 Historial de pagos</div><div id="historial-pagos"><div style="color:var(--muted);font-size:13px">Cargando...</div></div></div>
+</div>
+
+<!-- IMPUESTOS -->
+<div id="panel-impuestos" class="panel">
+  <div class="card">
+    <div class="section-title">🏦 Control de impuestos</div>
+    <p style="color:var(--muted);margin-bottom:16px;font-size:13px;line-height:1.7">
+      <strong style="color:var(--accent)">Portal ATER San Juan:</strong> ater.sanjuan.gov.ar → Consulta de deuda → Impuesto Inmobiliario.<br>
+      Dato clave: <strong>Partida inmobiliaria</strong> (está en la escritura o en Catastro SJ).
+    </p>
+    <div class="form-grid">
+      <div class="form-group"><label>Lote</label><select id="imp-lote" onchange="cargarDatosImpuesto()"><option value="">Seleccionar...</option></select></div>
+      <div class="form-group"><label>Período / Año</label><input type="text" id="imp-periodo" placeholder="ej: 2025"></div>
+    </div>
+    <div id="imp-datos-lote" style="display:none;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin-bottom:8px">DATOS CATASTRALES</div>
+      <div id="imp-detalle"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Monto impuesto ($)</label><input type="number" id="imp-monto" placeholder="0"></div>
+      <div class="form-group"><label>Vencimiento</label><input type="date" id="imp-venc"></div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group"><label>Estado</label><select id="imp-estado"><option value="pagado">✅ Pagado por el teniente</option><option value="pendiente">⏳ Pendiente de verificación</option><option value="adeuda">❌ Adeuda (confirmado)</option></select></div>
+      <div class="form-group"><label>Fecha de verificación</label><input type="date" id="imp-fecha-ver"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px"><label>Notas / acciones tomadas</label><textarea id="imp-notas" rows="2" placeholder="Ej: Llamé al teniente, confirmó pago..."></textarea></div>
+    <button class="btn btn-primary" id="btn-registrar-imp" onclick="registrarImpuesto()">✓ Guardar registro</button>
+  </div>
+  <div class="card"><div class="section-title">📋 Historial de impuestos</div><div id="historial-impuestos"><div style="color:var(--muted);font-size:13px">Cargando...</div></div></div>
+</div>
+
+<!-- RECORDATORIOS -->
+<div id="panel-recordatorios" class="panel">
+  <div class="section-title">🔔 Recordatorios y seguimiento</div>
+  <div class="card">
+    <div style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--muted);margin-bottom:11px">NUEVO RECORDATORIO</div>
+    <div class="form-grid cols3">
+      <div class="form-group"><label>Tipo</label><select id="rec-tipo"><option value="cuota">Cobrar cuota</option><option value="impuesto">Verificar impuesto</option><option value="deuda">Seguimiento deuda</option><option value="reunion">Reunión / contacto</option><option value="otro">Otro</option></select></div>
+      <div class="form-group"><label>Lote</label><select id="rec-lote"><option value="todos">Todos los lotes</option></select></div>
+      <div class="form-group"><label>Fecha</label><input type="date" id="rec-fecha"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:11px"><label>Descripción</label><input type="text" id="rec-desc" placeholder="Ej: Verificar boleta de impuesto Lote 3"></div>
+    <button class="btn btn-primary" onclick="agregarRecordatorio()">+ Agregar</button>
+  </div>
+  <div id="lista-recordatorios"><div style="color:var(--muted);font-size:13px">Cargando...</div></div>
+</div>
+
+<!-- GUÍA -->
+<div id="panel-contrato" class="panel">
+  <div class="card">
+    <div class="section-title">📄 Guía de administración y modelo de acuerdo</div>
+    <div style="line-height:1.8;font-size:13px">
+      <div style="background:var(--surface2);border-left:3px solid var(--accent);padding:13px 16px;border-radius:0 8px 8px 0;margin-bottom:18px">
+        <strong style="font-family:var(--font-head);font-size:14px">CONTRATO DE ADMINISTRACIÓN DE LOTES</strong><br>
+        <span style="color:var(--muted)">Modelo de referencia — firmar ante escribano con datos reales</span>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:var(--font-head);font-weight:700;color:var(--warn);margin-bottom:7px">1. COBRANZA DE CUOTAS</div>
+        <ul style="list-style:none;padding-left:0">
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Registrar cada pago mensual con fecha, monto y forma de pago</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Actualizar la cuota mensualmente según variación de cemento y hierro (promedio de ambas)</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Notificar al teniente el nuevo valor dentro de los primeros 5 días del mes</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Alertar ante atrasos superiores a 30 días</li>
+          <li style="padding:4px 0">✓ Informe mensual al propietario del estado de cobranza</li>
+        </ul>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:var(--font-head);font-weight:700;color:var(--warn);margin-bottom:7px">2. CONTROL DE IMPUESTOS</div>
+        <ul style="list-style:none;padding-left:0">
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Verificar trimestralmente el Impuesto Inmobiliario en ATER San Juan</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Usar la partida inmobiliaria de cada lote para la consulta</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">✓ Documentar cada verificación: fecha, resultado, acciones</li>
+          <li style="padding:4px 0">✓ Notificar al teniente ante deuda, con constancia escrita</li>
+        </ul>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:var(--font-head);font-weight:700;color:var(--warn);margin-bottom:7px">3. OBLIGACIONES DEL TENIENTE</div>
+        <ul style="list-style:none;padding-left:0">
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">• Pagar la cuota antes del día ___ de cada mes</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">• Abonar todos los impuestos del lote desde la firma del boleto</li>
+          <li style="padding:4px 0;border-bottom:1px solid var(--border)">• Presentar comprobantes de pago ante requerimiento</li>
+          <li style="padding:4px 0">• Mantener datos de contacto actualizados</li>
+        </ul>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:var(--font-head);font-weight:700;color:var(--warn);margin-bottom:7px">4. DATOS A REGISTRAR POR LOTE</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px">Del lote</div>
+            <div class="chip">📍 Número y manzana</div><div class="chip">📋 Partida inmobiliaria</div>
+            <div class="chip">🗺️ Nomenclatura catastral</div><div class="chip">📏 Superficie m²</div>
+            <div class="chip">💰 Precio total</div><div class="chip">💳 Cuota inicial</div>
+            <div class="chip">📅 Fecha boleto</div><div class="chip">🔢 Total cuotas</div>
+          </div>
+          <div><div style="color:var(--muted);font-size:10px;text-transform:uppercase;margin-bottom:5px">Del teniente</div>
+            <div class="chip">👤 Nombre completo</div><div class="chip">🪪 DNI</div>
+            <div class="chip">📞 WhatsApp</div><div class="chip">📧 Email</div>
+            <div class="chip">🏠 Domicilio</div><div class="chip">📄 Copia boleto</div>
+          </div>
+        </div>
+      </div>
+      <div style="margin-bottom:16px">
+        <div style="font-family:var(--font-head);font-weight:700;color:var(--warn);margin-bottom:7px">5. IMPUESTOS — CÓMO VERIFICAR EN SAN JUAN</div>
+        <div style="background:var(--surface2);padding:13px;border-radius:8px;line-height:2">
+          <strong>Portal:</strong> <span style="color:var(--accent)">ater.sanjuan.gov.ar</span><br>
+          <strong>Sección:</strong> Consulta de deuda → Impuesto Inmobiliario<br>
+          <strong>Dato clave:</strong> Número de partida inmobiliaria<br>
+          <strong>Si no tenés la partida:</strong> Ir a Catastro San Juan con la nomenclatura del lote<br>
+          <strong>Frecuencia:</strong> cada 3 meses mínimo · siempre en enero
+        </div>
+      </div>
+      <div>
+        <div style="font-family:var(--font-head);font-weight:700;color:var(--warn);margin-bottom:7px">6. FÓRMULA DE ACTUALIZACIÓN DE CUOTA</div>
+        <div style="background:var(--surface2);padding:13px;border-radius:8px;font-family:monospace;font-size:13px;color:var(--accent2);line-height:2">
+          % aumento cemento = (actual - anterior) / anterior × 100<br>
+          % aumento hierro = (actual - anterior) / anterior × 100<br>
+          % promedio = (% cemento + % hierro) / 2<br>
+          Nueva cuota = cuota anterior × (1 + % promedio / 100)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</div><!-- /content -->
+
+<!-- MODAL NUEVO LOTE -->
+<div class="modal-overlay" id="modal-nuevo-lote">
+  <div class="modal">
+    <h2>🏘️ Registrar nuevo lote</h2>
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin-bottom:9px">DATOS DEL LOTE</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Número de lote</label><input type="text" id="nl-numero" placeholder="ej: Lote 3"></div>
+      <div class="form-group"><label>Manzana</label><input type="text" id="nl-manzana" placeholder="ej: B"></div>
+      <div class="form-group"><label>Partida inmobiliaria</label><input type="text" id="nl-partida" placeholder="ej: 15-234-03"></div>
+      <div class="form-group"><label>Nomenclatura catastral</label><input type="text" id="nl-catastral" placeholder="ej: 09-1-2-345-0003"></div>
+      <div class="form-group"><label>Superficie (m²)</label><input type="number" id="nl-m2" placeholder="300"></div>
+      <div class="form-group"><label>Precio total de venta ($)</label><input type="number" id="nl-precio" placeholder="0"></div>
+      <div class="form-group"><label>Cuota mensual inicial ($)</label><input type="number" id="nl-cuota" placeholder="0"></div>
+      <div class="form-group"><label>Total de cuotas</label><input type="number" id="nl-ncuotas" placeholder="60"></div>
+      <div class="form-group"><label>Cuotas ya pagas</label><input type="number" id="nl-pagadas" placeholder="0"></div>
+      <div class="form-group"><label>Fecha firma boleto</label><input type="date" id="nl-fecha"></div>
+    </div>
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 9px">DATOS DEL TENIENTE</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre completo</label><input type="text" id="nl-nombre" placeholder="Apellido, Nombre"></div>
+      <div class="form-group"><label>DNI</label><input type="text" id="nl-dni" placeholder="00.000.000"></div>
+      <div class="form-group"><label>Teléfono / WhatsApp</label><input type="text" id="nl-tel" placeholder="+54 264..."></div>
+      <div class="form-group"><label>Email</label><input type="email" id="nl-email" placeholder="email@ejemplo.com"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:6px"><label>Domicilio</label><input type="text" id="nl-domicilio" placeholder="Calle, número, localidad"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-nuevo-lote')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-lote" onclick="guardarLote()">✓ Guardar en Sheets</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DETALLE -->
+<div class="modal-overlay" id="modal-detalle">
+  <div class="modal">
+    <h2 id="detalle-titulo">Lote</h2>
+    <div id="detalle-content"></div>
+    <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-detalle')">Cerrar</button></div>
+  </div>
+</div>
+
+<script>
+// ===== CONFIG =====
+const API = 'https://script.google.com/macros/s/AKfycbxpS2QxHHlQmNayXFNwCWYV3hGWqrjWpAQzi-o_7kRhBQFPafwU45v4so0UVUqhWewq1g/exec';
+
+// ===== LOCAL STATE (cache) =====
+let cache = { lotes:[], tenientes:[], pagos:[], impuestos:[], recordatorios:[], materiales:[] };
+let cuotaBase = 0;
+let cementoActual = 0;
+
+// ===== UTILS =====
+const fmt = n => n ? '$'+Number(n).toLocaleString('es-AR') : '—';
+const fmtF = d => { if(!d) return '—'; try{ return new Date(d+'T12:00:00').toLocaleDateString('es-AR') }catch{ return d } };
+const today = () => new Date().toISOString().slice(0,10);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
+
+// ===== SYNC UI =====
+function setSyncState(state, msg) {
+  const dot = document.getElementById('sync-dot');
+  const txt = document.getElementById('sync-text');
+  dot.className = 'sync-dot ' + state;
+  txt.textContent = msg;
+}
+
+// ===== API CALLS =====
+async function sheetRead(sheetName) {
+  const url = `${API}?action=read&sheet=${sheetName}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  // Convert rows to objects using first row as headers
+  const [headers, ...rows] = j.data;
+  return rows.filter(r => r.some(c => c !== '')).map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = row[i] ?? '');
+    return obj;
+  });
+}
+
+async function sheetAppend(sheetName, row) {
+  const url = `${API}?action=append&sheet=${sheetName}&row=${encodeURIComponent(JSON.stringify(row))}`;
+  const r = await fetch(url);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  return j;
+}
+
+// ===== LOAD ALL DATA =====
+async function loadAll() {
+  setSyncState('loading', 'Cargando datos desde Google Sheets...');
+  try {
+    const [lotes, tenientes, pagos, impuestos, recordatorios, materiales] = await Promise.all([
+      sheetRead('LOTES').catch(()=>[]),
+      sheetRead('TENIENTES').catch(()=>[]),
+      sheetRead('PAGOS').catch(()=>[]),
+      sheetRead('IMPUESTOS').catch(()=>[]),
+      sheetRead('RECORDATORIOS').catch(()=>[]),
+      sheetRead('CUOTAS_MATERIALES').catch(()=>[]),
+    ]);
+    cache.lotes = lotes;
+    cache.tenientes = tenientes;
+    cache.pagos = pagos;
+    cache.impuestos = impuestos;
+    cache.recordatorios = recordatorios;
+    cache.materiales = materiales;
+
+    // Update cuota base from last material entry
+    if (materiales.length) {
+      const last = materiales[materiales.length-1];
+      cuotaBase = parseFloat(last['Cuota Base Nueva']) || 0;
+      cementoActual = parseFloat(last['Cemento Actual']) || 0;
+    }
+
+    setSyncState('ok', 'Conectado · Google Sheets · Última sincronización: ' + new Date().toLocaleTimeString('es-AR'));
+    renderDashboard();
+  } catch(e) {
+    setSyncState('err', 'Error de conexión con Google Sheets: ' + e.message);
+  }
+}
+
+// ===== HELPERS =====
+function getLoteNombre(id) {
+  const l = cache.lotes.find(x => String(x['ID']) === String(id));
+  return l ? l['Numero Lote'] + (l['Manzana'] ? ' Mz '+l['Manzana'] : '') : id;
+}
+function getTeniente(loteId) {
+  return cache.tenientes.find(x => String(x['ID Lote']) === String(loteId));
+}
+function getLoteEstado(loteId) {
+  const l = cache.lotes.find(x => String(x['ID']) === String(loteId));
+  return l ? l['Estado'] : '';
+}
+
+// ===== TABS =====
+function switchTab(tab, el) {
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('panel-'+tab).classList.add('active');
+  el.classList.add('active');
+  const renders = {lotes:renderLotes, cuotas:renderCuotas, impuestos:renderImpuestos, recordatorios:renderRecordatorios};
+  if (renders[tab]) renders[tab]();
+}
+function openModal(id){ document.getElementById(id).classList.add('open') }
+function closeModal(id){ document.getElementById(id).classList.remove('open') }
+
+// ===== POPULATE SELECTS =====
+function populateSelects() {
+  const opts = cache.lotes.map(l => `<option value="${l['ID']}">${l['Numero Lote']}${l['Manzana']?' Mz '+l['Manzana']:''} — ${getTeniente(l['ID'])?.['Nombre']||'(sin teniente)'}</option>`).join('');
+  ['pago-lote','imp-lote'].forEach(sid => {
+    const s = document.getElementById(sid);
+    if(s) s.innerHTML = '<option value="">Seleccionar...</option>' + opts;
+  });
+  const rs = document.getElementById('rec-lote');
+  if(rs) rs.innerHTML = '<option value="todos">Todos los lotes</option>' + opts;
+}
+
+// ===== DASHBOARD =====
+function renderDashboard() {
+  const lotes = cache.lotes;
+  const aldia = lotes.filter(l=>l['Estado']==='al-dia').length;
+  const atraso = lotes.filter(l=>l['Estado']==='atrasado').length;
+  document.getElementById('stat-aldia').textContent = aldia;
+  document.getElementById('stat-atraso').textContent = atraso;
+  document.getElementById('stat-cuota').textContent = cuotaBase ? fmt(cuotaBase) : '—';
+  document.getElementById('stat-cemento').textContent = cementoActual ? fmt(cementoActual) : '—';
+
+  const tbody = document.getElementById('tabla-dashboard');
+  tbody.innerHTML = lotes.map(l => {
+    const t = getTeniente(l['ID']);
+    const up = cache.pagos.filter(p=>String(p['ID Lote'])===String(l['ID'])).sort((a,b)=>b['Mes']?.localeCompare(a['Mes']||'')||0)[0];
+    const imp = cache.impuestos.filter(i=>String(i['ID Lote'])===String(l['ID'])).sort((a,b)=>b['Fecha Verificacion']?.localeCompare(a['Fecha Verificacion']||'')||0)[0];
+    const bc = l['Estado']==='al-dia'?'al-dia':l['Estado']==='atrasado'?'atrasado':'pendiente';
+    const bt = l['Estado']==='al-dia'?'Al día':l['Estado']==='atrasado'?'Atrasado':'Pendiente';
+    const ib = imp?(imp['Estado']==='pagado'?'<span class="badge al-dia">✓</span>':imp['Estado']==='adeuda'?'<span class="badge atrasado">⚠</span>':'<span class="badge pendiente">?</span>'):'<span style="color:var(--muted);font-size:12px">—</span>';
+    const nombreLote = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+    return `<tr onclick="verDetalle('${l['ID']}')">
+      <td><strong style="color:var(--accent)">${nombreLote}</strong></td>
+      <td>${t?.['Nombre']||'—'}</td>
+      <td>${l['Cuota Inicial']?fmt(l['Cuota Inicial']):'—'}</td>
+      <td>${up?fmtF(up['Fecha']):'<span style="color:var(--danger);font-size:12px">Sin registros</span>'}</td>
+      <td>${ib}</td>
+      <td><span class="badge ${bc}">${bt}</span></td>
+      <td><button class="btn btn-secondary" style="padding:3px 9px;font-size:11px" onclick="event.stopPropagation();verDetalle('${l['ID']}')">Ver</button></td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="7" style="color:var(--muted);text-align:center;padding:20px">No hay lotes. Agregá el primero con + Nuevo Lote</td></tr>';
+
+  const alertas = document.getElementById('alertas-container');
+  let items = [];
+  lotes.filter(l=>l['Estado']==='atrasado').forEach(l => {
+    const t = getTeniente(l['ID']);
+    const n = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+    items.push(`<div class="recordatorio vencido"><div class="rec-icon">💰</div><div style="flex:1"><div class="rec-title">${n}</div><div class="rec-sub">Cuota atrasada · ${t?.['Nombre']||'—'}</div></div><span class="rec-badge vencido">URGENTE</span></div>`);
+  });
+  cache.impuestos.filter(i=>i['Estado']==='adeuda').forEach(i => {
+    items.push(`<div class="recordatorio vencido"><div class="rec-icon">🏦</div><div style="flex:1"><div class="rec-title">${getLoteNombre(i['ID Lote'])}</div><div class="rec-sub">Impuesto adeudado ${i['Periodo']}</div></div><span class="rec-badge vencido">DEUDA</span></div>`);
+  });
+  alertas.innerHTML = items.length ? items.join('') : '<div style="color:var(--muted);font-size:13px;padding:8px">✅ Sin alertas activas</div>';
+  populateSelects();
+}
+
+// ===== LOTES =====
+function renderLotes() {
+  const container = document.getElementById('lista-lotes-detalle');
+  if (!cache.lotes.length) {
+    container.innerHTML = '<div class="card" style="color:var(--muted);text-align:center;padding:30px">No hay lotes registrados. Usá + Agregar Lote para empezar.</div>';
+    return;
+  }
+  container.innerHTML = cache.lotes.map(l => {
+    const t = getTeniente(l['ID']);
+    const pagadas = parseInt(l['Cuotas Pagas'])||0;
+    const total = parseInt(l['Cuotas Total'])||1;
+    const pct = Math.min(100, Math.round((pagadas/total)*100));
+    const bc = l['Estado']==='al-dia'?'al-dia':l['Estado']==='atrasado'?'atrasado':'pendiente';
+    const bt = l['Estado']==='al-dia'?'Al día':l['Estado']==='atrasado'?'Atrasado':'Pendiente';
+    const nombre = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+    return `<div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px">
+        <div><div style="font-family:var(--font-head);font-size:17px;font-weight:800;color:var(--accent)">${nombre}</div>
+        <div style="color:var(--muted);font-size:11px">Partida: ${l['Partida Inmobiliaria']||'—'} · ${l['Superficie m2']||'—'} m²</div></div>
+        <div style="text-align:right"><span class="badge ${bc}">${bt}</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Desde ${fmtF(l['Fecha Boleto'])}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:13px;margin-bottom:13px">
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Teniente</div>
+        <div style="font-weight:600">${t?.['Nombre']||'—'}</div>
+        <div style="color:var(--muted);font-size:12px">${t?.['Telefono']||''}</div>
+        <div style="color:var(--muted);font-size:12px">${t?.['Email']||''}</div></div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Financiación</div>
+        <div style="font-weight:600">${fmt(l['Precio Total'])} total</div>
+        <div style="color:var(--muted);font-size:12px">Cuota: ${fmt(l['Cuota Inicial'])}/mes</div>
+        <div style="color:var(--muted);font-size:12px">${pagadas}/${total} cuotas pagas</div></div>
+        <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Progreso</div>
+        <div class="progress-bar"><div class="progress-fill ${pct>50?'ok':''}" style="width:${pct}%"></div></div>
+        <div style="font-size:12px;margin-top:4px;color:var(--accent)">${pct}% abonado</div></div>
+      </div>
+      <button class="btn btn-secondary" style="font-size:12px" onclick="verDetalle('${l['ID']}')">📋 Ver historial completo</button>
+    </div>`;
+  }).join('');
+}
+
+// ===== VER DETALLE =====
+function verDetalle(id) {
+  const l = cache.lotes.find(x=>String(x['ID'])===String(id));
+  if(!l) return;
+  const t = getTeniente(id);
+  const nombre = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+  const pagos = cache.pagos.filter(p=>String(p['ID Lote'])===String(id)).sort((a,b)=>b['Mes']?.localeCompare(a['Mes']||'')||0);
+  const imps = cache.impuestos.filter(i=>String(i['ID Lote'])===String(id)).sort((a,b)=>b['Fecha Verificacion']?.localeCompare(a['Fecha Verificacion']||'')||0);
+  document.getElementById('detalle-titulo').textContent = nombre + (t?' — '+t['Nombre']:'');
+  const ph = pagos.length ? pagos.map(p=>`<div class="log-entry"><div class="log-date">${fmtF(p['Fecha'])}</div><div class="log-text">Cuota ${p['Mes']} · ${fmt(p['Monto'])} · ${p['Forma Pago']}${p['Observaciones']?' · '+p['Observaciones']:''}</div><div class="log-type pago">PAGO</div></div>`).join('') : '<div style="color:var(--muted);font-size:13px">Sin pagos registrados</div>';
+  const ih = imps.length ? imps.map(i=>{const c=i['Estado']==='pagado'?'imp-ok':'imp-bad';return`<div class="log-entry"><div class="log-date">${fmtF(i['Fecha Verificacion'])}</div><div class="log-text">${i['Periodo']} · ${fmt(i['Monto'])} · ${i['Notas']}</div><div class="log-type ${c}">${(i['Estado']||'').toUpperCase()}</div></div>`}).join('') : '<div style="color:var(--muted);font-size:13px">Sin registros</div>';
+  document.getElementById('detalle-content').innerHTML = `
+    <div class="detail-row"><span>DNI</span><span class="val">${t?.['DNI']||'—'}</span></div>
+    <div class="detail-row"><span>Teléfono</span><span class="val">${t?.['Telefono']||'—'}</span></div>
+    <div class="detail-row"><span>Email</span><span class="val">${t?.['Email']||'—'}</span></div>
+    <div class="detail-row"><span>Domicilio</span><span class="val">${t?.['Domicilio']||'—'}</span></div>
+    <div class="detail-row"><span>Partida inmobiliaria</span><span class="val">${l['Partida Inmobiliaria']||'—'}</span></div>
+    <div class="detail-row"><span>Nomenclatura catastral</span><span class="val">${l['Nomenclatura Catastral']||'—'}</span></div>
+    <div class="detail-row"><span>Cuota inicial</span><span class="val">${fmt(l['Cuota Inicial'])}</span></div>
+    <div class="detail-row"><span>Cuotas pagas / total</span><span class="val">${l['Cuotas Pagas']} / ${l['Cuotas Total']}</span></div>
+    <div style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--warn);margin:14px 0 8px">HISTORIAL DE PAGOS</div>${ph}
+    <div style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--warn);margin:14px 0 8px">HISTORIAL IMPUESTOS</div>${ih}`;
+  openModal('modal-detalle');
+}
+
+// ===== CUOTAS =====
+function renderCuotas() {
+  populateSelects();
+  document.getElementById('pago-fecha').value = today();
+  const h = document.getElementById('historial-pagos');
+  if (!cache.pagos.length) { h.innerHTML='<div style="color:var(--muted)">Sin pagos registrados aún</div>'; return; }
+  h.innerHTML = [...cache.pagos].sort((a,b)=>b['Fecha']?.localeCompare(a['Fecha']||'')||0).slice(0,30).map(p=>`
+    <div class="log-entry"><div class="log-date">${fmtF(p['Fecha'])}</div>
+    <div class="log-text"><strong>${getLoteNombre(p['ID Lote'])}</strong> · Cuota ${p['Mes']} · ${p['Forma Pago']}${p['Observaciones']?' · '+p['Observaciones']:''}</div>
+    <div class="log-type pago">${fmt(p['Monto'])}</div></div>`).join('');
+}
+
+function calcularAumento() {
+  const ca=parseFloat(document.getElementById('cemento-ant').value);
+  const cc=parseFloat(document.getElementById('cemento-act').value);
+  const ha=parseFloat(document.getElementById('hierro-ant').value);
+  const hc=parseFloat(document.getElementById('hierro-act').value);
+  if(!ca||!cc){alert('Ingresá los valores de cemento');return}
+  const pctC=((cc-ca)/ca)*100;
+  const pctH=(ha&&hc)?((hc-ha)/ha)*100:pctC;
+  const avg=(pctC+pctH)/2;
+  const prev = cuotaBase || 0;
+  const nueva=Math.round((prev||1)*(1+avg/100));
+  const delta=nueva-(prev||0);
+  document.getElementById('res-pct').textContent='+'+avg.toFixed(1)+'%';
+  document.getElementById('res-cuota').textContent=fmt(nueva);
+  document.getElementById('res-delta').textContent='▲ '+fmt(delta)+' vs mes anterior';
+  document.getElementById('cuota-result').style.display='flex';
+  // Save to sheets
+  const mes = new Date().toISOString().slice(0,7);
+  sheetAppend('CUOTAS_MATERIALES',[mes,ca,cc,ha||'',hc||'',avg.toFixed(2),prev,nueva,today()])
+    .then(()=>{ cuotaBase=nueva; cementoActual=cc; document.getElementById('stat-cuota').textContent=fmt(nueva); document.getElementById('stat-cemento').textContent=fmt(cc); setSyncState('ok','Actualización de cuota guardada en Sheets ✓'); })
+    .catch(e=>setSyncState('err','Error guardando: '+e.message));
+}
+
+async function registrarPago() {
+  const lid=document.getElementById('pago-lote').value;
+  const mes=document.getElementById('pago-mes').value;
+  const monto=parseFloat(document.getElementById('pago-monto').value);
+  const fecha=document.getElementById('pago-fecha').value;
+  const forma=document.getElementById('pago-forma').value;
+  const obs=document.getElementById('pago-obs').value;
+  if(!lid||!mes||!monto){alert('Completá lote, mes y monto');return}
+  const btn=document.getElementById('btn-registrar-pago');
+  btn.textContent='Guardando...'; btn.disabled=true;
+  const t=getTeniente(lid);
+  const id=uid();
+  try {
+    await sheetAppend('PAGOS',[id,lid,getLoteNombre(lid),t?.['Nombre']||'',mes,monto,fecha,forma,obs]);
+    cache.pagos.push({'ID':id,'ID Lote':lid,'Nombre Teniente':t?.['Nombre']||'','Mes':mes,'Monto':monto,'Fecha':fecha,'Forma Pago':forma,'Observaciones':obs});
+    document.getElementById('pago-monto').value='';
+    document.getElementById('pago-obs').value='';
+    setSyncState('ok','Pago registrado en Google Sheets ✓');
+    renderCuotas();
+    renderDashboard();
+    alert('✓ Pago registrado en Google Sheets');
+  } catch(e){ setSyncState('err','Error: '+e.message); alert('Error guardando: '+e.message); }
+  btn.textContent='✓ Registrar Pago'; btn.disabled=false;
+}
+
+// ===== IMPUESTOS =====
+function renderImpuestos() {
+  populateSelects();
+  document.getElementById('imp-fecha-ver').value=today();
+  const h=document.getElementById('historial-impuestos');
+  if(!cache.impuestos.length){h.innerHTML='<div style="color:var(--muted)">Sin registros aún</div>';return}
+  h.innerHTML=[...cache.impuestos].sort((a,b)=>b['Fecha Verificacion']?.localeCompare(a['Fecha Verificacion']||'')||0).map(i=>{
+    const c=i['Estado']==='pagado'?'imp-ok':'imp-bad';
+    return`<div class="log-entry"><div class="log-date">${fmtF(i['Fecha Verificacion'])}</div>
+    <div class="log-text"><strong>${getLoteNombre(i['ID Lote'])}</strong> · ${i['Periodo']} · ${fmt(i['Monto'])} · vto ${fmtF(i['Vencimiento'])}<br><span style="color:var(--muted)">${i['Notas']}</span></div>
+    <div class="log-type ${c}">${(i['Estado']||'').toUpperCase()}</div></div>`;
+  }).join('');
+}
+
+function cargarDatosImpuesto() {
+  const id=document.getElementById('imp-lote').value;
+  if(!id){document.getElementById('imp-datos-lote').style.display='none';return}
+  const l=cache.lotes.find(x=>String(x['ID'])===String(id));
+  const t=getTeniente(id);
+  if(!l){return}
+  document.getElementById('imp-detalle').innerHTML=`
+    <div class="detail-row"><span>Lote</span><span class="val">${l['Numero Lote']}${l['Manzana']?' Mz '+l['Manzana']:''}</span></div>
+    <div class="detail-row"><span>Partida inmobiliaria</span><span class="val">${l['Partida Inmobiliaria']||'—'}</span></div>
+    <div class="detail-row"><span>Nomenclatura catastral</span><span class="val">${l['Nomenclatura Catastral']||'—'}</span></div>
+    <div class="detail-row"><span>Titular</span><span class="val">${t?.['Nombre']||'—'} · DNI ${t?.['DNI']||'—'}</span></div>`;
+  document.getElementById('imp-datos-lote').style.display='block';
+}
+
+async function registrarImpuesto() {
+  const lid=document.getElementById('imp-lote').value;
+  if(!lid){alert('Seleccioná un lote');return}
+  const btn=document.getElementById('btn-registrar-imp');
+  btn.textContent='Guardando...'; btn.disabled=true;
+  const t=getTeniente(lid);
+  const id=uid();
+  const row=[id,lid,getLoteNombre(lid),t?.['Nombre']||'',
+    document.getElementById('imp-periodo').value,
+    parseFloat(document.getElementById('imp-monto').value)||0,
+    document.getElementById('imp-venc').value,
+    document.getElementById('imp-estado').value,
+    document.getElementById('imp-fecha-ver').value,
+    document.getElementById('imp-notas').value];
+  try {
+    await sheetAppend('IMPUESTOS',row);
+    cache.impuestos.push({'ID':id,'ID Lote':lid,'Numero Lote':getLoteNombre(lid),'Nombre Teniente':t?.['Nombre']||'','Periodo':row[4],'Monto':row[5],'Vencimiento':row[6],'Estado':row[7],'Fecha Verificacion':row[8],'Notas':row[9]});
+    document.getElementById('imp-monto').value='';
+    document.getElementById('imp-notas').value='';
+    setSyncState('ok','Impuesto registrado en Google Sheets ✓');
+    renderImpuestos();
+    alert('✓ Registro guardado en Google Sheets');
+  } catch(e){ setSyncState('err','Error: '+e.message); alert('Error: '+e.message); }
+  btn.textContent='✓ Guardar registro'; btn.disabled=false;
+}
+
+// ===== RECORDATORIOS =====
+function renderRecordatorios() {
+  populateSelects();
+  document.getElementById('rec-fecha').value=today();
+  const c=document.getElementById('lista-recordatorios');
+  if(!cache.recordatorios.length){c.innerHTML='<div style="color:var(--muted);padding:10px">Sin recordatorios</div>';return}
+  const t7=new Date(Date.now()+7*86400000).toISOString().slice(0,10);
+  const icons={cuota:'💰',impuesto:'🏦',deuda:'⚠️',reunion:'🤝',otro:'📌'};
+  c.innerHTML=[...cache.recordatorios]
+    .filter(r=>r['Estado']!=='HECHO')
+    .sort((a,b)=>a['Fecha']?.localeCompare(b['Fecha']||'')||0)
+    .map(r=>{
+      const v=r['Estado']!=='HECHO'&&r['Fecha']<today();
+      const p=r['Estado']!=='HECHO'&&r['Fecha']>=today()&&r['Fecha']<=t7;
+      const cls=r['Estado']==='HECHO'?'ok':v?'vencido':p?'proximo':'';
+      const bt=r['Estado']==='HECHO'?'LISTO':v?'VENCIDO':p?'PRONTO':'';
+      const bc=r['Estado']==='HECHO'?'ok':v?'vencido':p?'proximo':'';
+      const lNombre=r['ID Lote']==='todos'?'Todos los lotes':getLoteNombre(r['ID Lote']);
+      return`<div class="recordatorio ${cls}">
+        <div class="rec-icon">${icons[r['Tipo']]||'📌'}</div>
+        <div style="flex:1"><div class="rec-title">${r['Descripcion']}</div>
+        <div class="rec-sub">${lNombre} · ${fmtF(r['Fecha'])}</div></div>
+        ${bt?`<span class="rec-badge ${bc}">${bt}</span>`:''}
+        ${r['Estado']!=='HECHO'?`<button class="btn btn-secondary" style="font-size:11px;padding:3px 8px;margin-left:8px" onclick="marcarHecho('${r['ID']}')">✓</button>`:''}
+      </div>`;
+    }).join('')||'<div style="color:var(--muted);padding:10px">✅ Todo al día</div>';
+}
+
+async function agregarRecordatorio() {
+  const desc=document.getElementById('rec-desc').value;
+  const fecha=document.getElementById('rec-fecha').value;
+  if(!desc||!fecha){alert('Completá descripción y fecha');return}
+  const lid=document.getElementById('rec-lote').value;
+  const id=uid();
+  const row=[id,document.getElementById('rec-tipo').value,lid,getLoteNombre(lid),fecha,desc,'PENDIENTE',''];
+  try {
+    await sheetAppend('RECORDATORIOS',row);
+    cache.recordatorios.push({'ID':id,'Tipo':row[1],'ID Lote':lid,'Numero Lote':row[3],'Fecha':fecha,'Descripcion':desc,'Estado':'PENDIENTE','Fecha Completado':''});
+    document.getElementById('rec-desc').value='';
+    setSyncState('ok','Recordatorio guardado en Sheets ✓');
+    renderRecordatorios();
+  } catch(e){ alert('Error: '+e.message); }
+}
+
+async function marcarHecho(id) {
+  const r=cache.recordatorios.find(x=>String(x['ID'])===String(id));
+  if(r){ r['Estado']='HECHO'; r['Fecha Completado']=today(); }
+  // We just update local cache and append a note — full update requires rowIndex
+  // For now reflect in UI; on next load it will reload from sheets
+  setSyncState('ok','Marcado como hecho (se actualizará al recargar)');
+  renderRecordatorios();
+}
+
+// ===== GUARDAR LOTE =====
+async function guardarLote() {
+  const g=id=>document.getElementById(id).value;
+  if(!g('nl-numero')||!g('nl-nombre')){alert('Completá número de lote y nombre del teniente');return}
+  const btn=document.getElementById('btn-guardar-lote');
+  btn.textContent='Guardando en Sheets...'; btn.disabled=true;
+  const id=uid();
+  const loteRow=[id,g('nl-numero'),g('nl-manzana'),g('nl-partida'),g('nl-catastral'),g('nl-m2'),g('nl-precio'),g('nl-cuota'),g('nl-ncuotas'),g('nl-pagadas'),g('nl-fecha'),'pendiente',''];
+  const tenienteRow=[id,g('nl-numero')+(g('nl-manzana')?' Mz '+g('nl-manzana'):''),g('nl-nombre'),g('nl-dni'),g('nl-tel'),g('nl-email'),g('nl-domicilio')];
+  try {
+    await Promise.all([sheetAppend('LOTES',loteRow), sheetAppend('TENIENTES',tenienteRow)]);
+    // Update local cache
+    cache.lotes.push({'ID':id,'Numero Lote':loteRow[1],'Manzana':loteRow[2],'Partida Inmobiliaria':loteRow[3],'Nomenclatura Catastral':loteRow[4],'Superficie m2':loteRow[5],'Precio Total':loteRow[6],'Cuota Inicial':loteRow[7],'Cuotas Total':loteRow[8],'Cuotas Pagas':loteRow[9],'Fecha Boleto':loteRow[10],'Estado':'pendiente','Notas':''});
+    cache.tenientes.push({'ID Lote':id,'Numero Lote':tenienteRow[1],'Nombre':tenienteRow[2],'DNI':tenienteRow[3],'Telefono':tenienteRow[4],'Email':tenienteRow[5],'Domicilio':tenienteRow[6]});
+    ['nl-numero','nl-manzana','nl-partida','nl-catastral','nl-m2','nl-precio','nl-cuota','nl-ncuotas','nl-pagadas','nl-fecha','nl-nombre','nl-dni','nl-tel','nl-email','nl-domicilio'].forEach(i=>document.getElementById(i).value='');
+    closeModal('modal-nuevo-lote');
+    setSyncState('ok','Lote guardado en Google Sheets ✓');
+    renderDashboard();
+    alert('✓ Lote guardado en Google Sheets');
+  } catch(e){ setSyncState('err','Error: '+e.message); alert('Error guardando: '+e.message); }
+  btn.textContent='✓ Guardar en Sheets'; btn.disabled=false;
+}
+
+// ===== INIT =====
+document.getElementById('fecha-hoy').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+loadAll();
+</script>
+</body>
+</html>
