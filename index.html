@@ -422,22 +422,27 @@ const fmt = n => n ? '$'+Number(n).toLocaleString('es-AR') : '—';
 const fmtF = d => {
   if(!d) return '—';
   try {
-    // Handle Excel serial numbers
     if (typeof d === 'number') {
       const date = new Date(Math.round((d - 25569) * 86400 * 1000));
       return date.toLocaleDateString('es-AR');
     }
     const s = String(d).trim();
     if (!s || s === '0') return '—';
-    // Try direct parse
+    // ISO with timezone: 2026-05-01T07:00:00.000Z → use date part only
+    if (s.includes('T')) {
+      const datePart = s.split('T')[0];
+      const [y,m,dd] = datePart.split('-');
+      return `${dd}/${m}/${y}`;
+    }
+    // YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+      const [y,m,dd] = s.split('-');
+      return `${dd}/${m}/${y}`;
+    }
+    // DD/MM/YYYY
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
     const dt = new Date(s);
     if (!isNaN(dt.getTime())) return dt.toLocaleDateString('es-AR');
-    // Try DD/MM/YYYY
-    const parts = s.split('/');
-    if (parts.length === 3) {
-      const dt2 = new Date(parts[2], parts[1]-1, parts[0]);
-      if (!isNaN(dt2.getTime())) return dt2.toLocaleDateString('es-AR');
-    }
     return s;
   } catch { return String(d); }
 };
@@ -599,7 +604,8 @@ function renderLotes() {
   }
   container.innerHTML = cache.lotes.map(l => {
     const t = getTeniente(l['ID']);
-    const pagadas = parseInt(l['Cuotas Pagas'])||0;
+    const pagadasReales = cache.pagos.filter(p=>String(p['ID Lote'])===String(l['ID'])).length;
+    const pagadas = pagadasReales || parseInt(l['Cuotas Pagas'])||0;
     const total = parseInt(l['Cuotas Total'])||1;
     const pct = Math.min(100, Math.round((pagadas/total)*100));
     const bc = l['Estado']==='al-dia'?'al-dia':l['Estado']==='atrasado'?'atrasado':'pendiente';
@@ -620,7 +626,8 @@ function renderLotes() {
         <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:3px">Financiación</div>
         <div style="font-weight:600">${fmt(l['Precio Total'])} total</div>
         <div style="color:var(--muted);font-size:12px">Cuota: ${fmt(l['Cuota Inicial'])}/mes</div>
-        <div style="color:var(--muted);font-size:12px">${pagadas}/${total} cuotas pagas</div></div>
+        <div style="color:var(--muted);font-size:12px">${pagadas}/${total} cuotas pagas</div>
+        <div style="color:var(--muted);font-size:12px">Resta: ${fmt(Math.max(0,(l['Precio Total']||0)-(l['Anticipo']||0)-(pagadas*(l['Cuota Inicial']||0))))}</div></div>
         <div><div style="font-size:10px;color:var(--muted);text-transform:uppercase;margin-bottom:4px">Progreso</div>
         <div class="progress-bar"><div class="progress-fill ${pct>50?'ok':''}" style="width:${pct}%"></div></div>
         <div style="font-size:12px;margin-top:4px;color:var(--accent)">${pct}% abonado</div></div>
@@ -642,7 +649,13 @@ function verDetalle(id) {
   const pagos = cache.pagos.filter(p=>String(p['ID Lote'])===String(id)).sort((a,b)=>b['Mes']?.localeCompare(a['Mes']||'')||0);
   const imps = cache.impuestos.filter(i=>String(i['ID Lote'])===String(id)).sort((a,b)=>b['Fecha Verificacion']?.localeCompare(a['Fecha Verificacion']||'')||0);
   document.getElementById('detalle-titulo').textContent = nombre + (t?' — '+t['Nombre']:'');
-  const ph = pagos.length ? pagos.map(p=>`<div class="log-entry"><div class="log-date">${fmtF(p['Fecha'])}</div><div class="log-text">Cuota ${p['Mes']} · ${fmt(p['Monto'])} · ${p['Forma Pago']}${p['Observaciones']?' · '+p['Observaciones']:''}</div><div class="log-type pago">PAGO</div></div>`).join('') : '<div style="color:var(--muted);font-size:13px">Sin pagos registrados</div>';
+  const fmtMesD = m => { if(!m) return ''; const s=String(m); if(s.includes('T')) return s.slice(0,7); return s; };
+  const ph = pagos.length ? pagos.map(p=>{
+    const obs=p['Observaciones']||'';
+    const numM=obs.match(/N[°º]?(\d+)/);
+    const nC=numM?' · Cuota N°'+numM[1]:'';
+    return `<div class="log-entry"><div class="log-date">${fmtF(p['Fecha'])}</div><div class="log-text">${fmtMesD(p['Mes'])}${nC} · ${fmt(p['Monto'])} · ${p['Forma Pago']}${obs&&!numM?' · '+obs:''}</div><div class="log-type pago">PAGO</div></div>`;
+  }).join('') : '<div style="color:var(--muted);font-size:13px">Sin pagos registrados</div>';
   const ih = imps.length ? imps.map(i=>{const c=i['Estado']==='pagado'?'imp-ok':'imp-bad';return`<div class="log-entry"><div class="log-date">${fmtF(i['Fecha Verificacion'])}</div><div class="log-text">${i['Periodo']} · ${fmt(i['Monto'])} · ${i['Notas']}</div><div class="log-type ${c}">${(i['Estado']||'').toUpperCase()}</div></div>`}).join('') : '<div style="color:var(--muted);font-size:13px">Sin registros</div>';
   document.getElementById('detalle-content').innerHTML = `
     <div class="detail-row"><span>DNI</span><span class="val">${t?.['DNI']||'—'}</span></div>
@@ -652,7 +665,7 @@ function verDetalle(id) {
     <div class="detail-row"><span>Nomenclatura catastral</span><span class="val">${l['Nomenclatura Catastral']||'—'}</span></div>
     <div class="detail-row"><span>Anticipo pagado</span><span class="val">${fmt(l['Anticipo'])}</span></div>
     <div class="detail-row"><span>Cuota inicial</span><span class="val">${fmt(l['Cuota Inicial'])}</span></div>
-    <div class="detail-row"><span>Cuotas pagas / total</span><span class="val">${l['Cuotas Pagas']} / ${l['Cuotas Total']}</span></div>
+    <div class="detail-row"><span>Cuotas pagas / total</span><span class="val">${cache.pagos.filter(p=>String(p['ID Lote'])===String(l['ID'])).length || l['Cuotas Pagas']} / ${l['Cuotas Total']}</span></div>
     <div style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--warn);margin:14px 0 8px">HISTORIAL DE PAGOS</div>${ph}
     <div style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--warn);margin:14px 0 8px">HISTORIAL IMPUESTOS</div>${ih}`;
   openModal('modal-detalle');
@@ -664,10 +677,25 @@ function renderCuotas() {
   document.getElementById('pago-fecha').value = today();
   const h = document.getElementById('historial-pagos');
   if (!cache.pagos.length) { h.innerHTML='<div style="color:var(--muted)">Sin pagos registrados aún</div>'; return; }
-  h.innerHTML = [...cache.pagos].sort((a,b)=>b['Fecha']?.localeCompare(a['Fecha']||'')||0).slice(0,30).map(p=>`
-    <div class="log-entry"><div class="log-date">${fmtF(p['Fecha'])}</div>
-    <div class="log-text"><strong>${getLoteNombre(p['ID Lote'])}</strong> · Cuota ${p['Mes']} · ${p['Forma Pago']}${p['Observaciones']?' · '+p['Observaciones']:''}</div>
-    <div class="log-type pago">${fmt(p['Monto'])}</div></div>`).join('');
+  const fmtMes = m => {
+    if(!m) return '';
+    const s = String(m);
+    // ISO date → extract YYYY-MM
+    if(s.includes('T')) return s.slice(0,7);
+    // Already YYYY-MM
+    if(/^\d{4}-\d{2}$/.test(s)) return s;
+    return s;
+  };
+  h.innerHTML = [...cache.pagos].sort((a,b)=>b['Fecha']?.localeCompare(a['Fecha']||'')||0).slice(0,30).map((p,i)=>{
+    const obs = p['Observaciones']||'';
+    // Extract cuota number from observaciones if exists
+    const numMatch = obs.match(/N[°º]?(\d+)/);
+    const numCuota = numMatch ? ' · Cuota N°'+numMatch[1] : '';
+    const mesLimpio = fmtMes(p['Mes']);
+    return `<div class="log-entry"><div class="log-date">${fmtF(p['Fecha'])}</div>
+    <div class="log-text"><strong>${getLoteNombre(p['ID Lote'])}</strong> · ${mesLimpio}${numCuota} · ${p['Forma Pago']}${obs&&!numMatch?' · '+obs:''}</div>
+    <div class="log-type pago">${fmt(p['Monto'])}</div></div>`;
+  }).join('');
 }
 
 function calcularAumento() {
@@ -705,9 +733,13 @@ async function registrarPago() {
   btn.textContent='Guardando...'; btn.disabled=true;
   const t=getTeniente(lid);
   const id=uid();
+  // Auto-number cuota
+  const pagosDelLote = cache.pagos.filter(p=>String(p['ID Lote'])===String(lid));
+  const numCuota = pagosDelLote.length + 1;
+  const obsConNumero = obs ? obs + ' · N°'+numCuota : 'N°'+numCuota;
   try {
-    await sheetAppend('PAGOS',[id,lid,getLoteNombre(lid),t?.['Nombre']||'',mes,monto,fecha,forma,obs]);
-    cache.pagos.push({'ID':id,'ID Lote':lid,'Nombre Teniente':t?.['Nombre']||'','Mes':mes,'Monto':monto,'Fecha':fecha,'Forma Pago':forma,'Observaciones':obs});
+    await sheetAppend('PAGOS',[id,lid,getLoteNombre(lid),t?.['Nombre']||'',mes,monto,fecha,forma,obsConNumero]);
+    cache.pagos.push({'ID':id,'ID Lote':lid,'Nombre Teniente':t?.['Nombre']||'','Mes':mes,'Monto':monto,'Fecha':fecha,'Forma Pago':forma,'Observaciones':obsConNumero});
     document.getElementById('pago-monto').value='';
     document.getElementById('pago-obs').value='';
     setSyncState('ok','Pago registrado en Google Sheets ✓');
