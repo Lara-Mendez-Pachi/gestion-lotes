@@ -410,7 +410,7 @@ tbody td{padding:10px 13px;font-size:13px}
 <script>
 // ===== CONFIG =====
 const CLAVE_API = '722445';
-const API = 'https://script.google.com/macros/s/AKfycbxqDlfqagmxSAwwUv6ChN-KmVF0SWyuj3eyTbdRnUsgkuJB_qluMiEVs4p3IKpj-RwoeA/exec';
+const API = 'https://script.google.com/macros/s/AKfycbzzJ7wENCx1qVLnMdQDjgwd3t-nKZezxg2-wppdIpkojqkO_K6jy5kgIuchaFiMGIaYGw/exec';
 
 // ===== LOCAL STATE (cache) =====
 let cache = { lotes:[], tenientes:[], pagos:[], impuestos:[], recordatorios:[], materiales:[] };
@@ -419,7 +419,28 @@ let cementoActual = 0;
 
 // ===== UTILS =====
 const fmt = n => n ? '$'+Number(n).toLocaleString('es-AR') : '—';
-const fmtF = d => { if(!d) return '—'; try{ return new Date(d+'T12:00:00').toLocaleDateString('es-AR') }catch{ return d } };
+const fmtF = d => {
+  if(!d) return '—';
+  try {
+    // Handle Excel serial numbers
+    if (typeof d === 'number') {
+      const date = new Date(Math.round((d - 25569) * 86400 * 1000));
+      return date.toLocaleDateString('es-AR');
+    }
+    const s = String(d).trim();
+    if (!s || s === '0') return '—';
+    // Try direct parse
+    const dt = new Date(s);
+    if (!isNaN(dt.getTime())) return dt.toLocaleDateString('es-AR');
+    // Try DD/MM/YYYY
+    const parts = s.split('/');
+    if (parts.length === 3) {
+      const dt2 = new Date(parts[2], parts[1]-1, parts[0]);
+      if (!isNaN(dt2.getTime())) return dt2.toLocaleDateString('es-AR');
+    }
+    return s;
+  } catch { return String(d); }
+};
 const today = () => new Date().toISOString().slice(0,10);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,5);
 
@@ -544,7 +565,10 @@ function renderDashboard() {
     return `<tr onclick="verDetalle('${l['ID']}')">
       <td><strong style="color:var(--accent)">${nombreLote}</strong></td>
       <td>${t?.['Nombre']||'—'}</td>
-      <td>${l['Cuota Inicial']?fmt(l['Cuota Inicial']):'—'}</td>
+      <td>${(() => {
+        const pagosLote = cache.pagos.filter(p=>String(p['ID Lote'])===String(l['ID'])).sort((a,b)=>b['Fecha']?.localeCompare(a['Fecha']||'')||0);
+        return pagosLote.length ? fmt(pagosLote[0]['Monto']) : (l['Cuota Inicial']?fmt(l['Cuota Inicial']):'—');
+      })()}</td>
       <td>${up?fmtF(up['Fecha']):'<span style="color:var(--danger);font-size:12px">Sin registros</span>'}</td>
       <td>${ib}</td>
       <td><span class="badge ${bc}">${bt}</span></td>
@@ -915,6 +939,7 @@ async function guardarEdicion() {
     // Update local cache
     if(loteIdx >= 0) {
       cache.lotes[loteIdx] = {'ID':id,'Numero Lote':loteRow[1],'Nomenclatura Catastral':loteRow[2],'Superficie m2':loteRow[3],'Precio Total':loteRow[4],'Anticipo':loteRow[5],'Cuota Inicial':loteRow[6],'Cuotas Total':loteRow[7],'Cuotas Pagas':loteRow[8],'Fecha Boleto':loteRow[9],'Estado':loteRow[10],'Notas':loteRow[11]};
+    console.log('Estado actualizado a:', loteRow[10]);
     }
     if(tenIdx >= 0) {
       cache.tenientes[tenIdx] = {'ID Lote':id,'Numero Lote':tenienteRow[1],'Nombre':tenienteRow[2],'DNI':tenienteRow[3],'Telefono':tenienteRow[4],'Email':tenienteRow[5],'Domicilio':tenienteRow[6]};
