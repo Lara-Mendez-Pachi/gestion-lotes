@@ -323,13 +323,12 @@ tbody td{padding:10px 13px;font-size:13px}
     <h2>🏘️ Registrar nuevo lote</h2>
     <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin-bottom:9px">DATOS DEL LOTE</div>
     <div class="form-grid">
-      <div class="form-group"><label>Número de lote</label><input type="text" id="nl-numero" placeholder="ej: Lote 3"></div>
-      <div class="form-group"><label>Manzana</label><input type="text" id="nl-manzana" placeholder="ej: B"></div>
-      <div class="form-group"><label>Partida inmobiliaria</label><input type="text" id="nl-partida" placeholder="ej: 15-234-03"></div>
+      <div class="form-group"><label>Número de lote</label><input type="text" id="nl-numero" placeholder="ej: Lote 3 Mz B"></div>
       <div class="form-group"><label>Nomenclatura catastral</label><input type="text" id="nl-catastral" placeholder="ej: 09-1-2-345-0003"></div>
       <div class="form-group"><label>Superficie (m²)</label><input type="number" id="nl-m2" placeholder="300"></div>
       <div class="form-group"><label>Precio total de venta ($)</label><input type="number" id="nl-precio" placeholder="0"></div>
-      <div class="form-group"><label>Cuota mensual inicial ($)</label><input type="number" id="nl-cuota" placeholder="0"></div>
+      <div class="form-group"><label>Anticipo pagado al momento de venta ($)</label><input type="number" id="nl-anticipo" placeholder="0"></div>
+      <div class="form-group"><label>Valor 1 cuota base ($)</label><input type="number" id="nl-cuota" placeholder="0" title="Este valor se actualizará cada mes según cemento/hierro"></div>
       <div class="form-group"><label>Total de cuotas</label><input type="number" id="nl-ncuotas" placeholder="60"></div>
       <div class="form-group"><label>Cuotas ya pagas</label><input type="number" id="nl-pagadas" placeholder="0"></div>
       <div class="form-group"><label>Fecha firma boleto</label><input type="date" id="nl-fecha"></div>
@@ -342,6 +341,16 @@ tbody td{padding:10px 13px;font-size:13px}
       <div class="form-group"><label>Email</label><input type="email" id="nl-email" placeholder="email@ejemplo.com"></div>
     </div>
     <div class="form-group" style="margin-bottom:6px"><label>Domicilio</label><input type="text" id="nl-domicilio" placeholder="Calle, número, localidad"></div>
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 9px">CUOTAS YA COBRADAS (si ya pagó alguna)</div>
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px">
+      <div id="nl-cuotas-lista" style="margin-bottom:10px"></div>
+      <div class="form-grid cols3" style="margin-bottom:8px">
+        <div class="form-group"><label>N° cuota</label><input type="number" id="nl-cq-num" placeholder="ej: 1" min="1"></div>
+        <div class="form-group"><label>Fecha de cobro</label><input type="date" id="nl-cq-fecha"></div>
+        <div class="form-group"><label>Monto cobrado ($)</label><input type="number" id="nl-cq-monto" placeholder="0"></div>
+      </div>
+      <button class="btn btn-secondary" style="font-size:12px" onclick="agregarCuotaPrevia()">+ Agregar cuota</button>
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-nuevo-lote')">Cancelar</button>
       <button class="btn btn-primary" id="btn-guardar-lote" onclick="guardarLote()">✓ Guardar en Sheets</button>
@@ -355,6 +364,46 @@ tbody td{padding:10px 13px;font-size:13px}
     <h2 id="detalle-titulo">Lote</h2>
     <div id="detalle-content"></div>
     <div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('modal-detalle')">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- MODAL EDITAR LOTE -->
+<div class="modal-overlay" id="modal-editar-lote">
+  <div class="modal">
+    <h2>✏️ Editar lote</h2>
+    <input type="hidden" id="el-id">
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin-bottom:9px">DATOS DEL LOTE</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Número de lote</label><input type="text" id="el-numero"></div>
+      <div class="form-group"><label>Nomenclatura catastral</label><input type="text" id="el-catastral"></div>
+      <div class="form-group"><label>Superficie (m2)</label><input type="number" id="el-m2"></div>
+      <div class="form-group"><label>Precio total ($)</label><input type="number" id="el-precio"></div>
+      <div class="form-group"><label>Anticipo pagado ($)</label><input type="number" id="el-anticipo"></div>
+      <div class="form-group"><label>Valor 1 cuota base ($)</label><input type="number" id="el-cuota"></div>
+      <div class="form-group"><label>Total de cuotas</label><input type="number" id="el-ncuotas"></div>
+      <div class="form-group"><label>Cuotas pagas</label><input type="number" id="el-pagadas"></div>
+      <div class="form-group"><label>Fecha firma boleto</label><input type="date" id="el-fecha"></div>
+      <div class="form-group"><label>Estado</label>
+        <select id="el-estado">
+          <option value="al-dia">Al dia</option>
+          <option value="atrasado">Atrasado</option>
+          <option value="pendiente">Pendiente</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Notas</label><input type="text" id="el-notas"></div>
+    </div>
+    <div style="font-family:var(--font-head);font-size:11px;font-weight:700;color:var(--muted);margin:12px 0 9px">DATOS DEL TENIENTE</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Nombre completo</label><input type="text" id="el-nombre"></div>
+      <div class="form-group"><label>DNI</label><input type="text" id="el-dni"></div>
+      <div class="form-group"><label>Telefono / WhatsApp</label><input type="text" id="el-tel"></div>
+      <div class="form-group"><label>Email</label><input type="email" id="el-email"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:6px"><label>Domicilio</label><input type="text" id="el-domicilio"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-editar-lote')">Cancelar</button>
+      <button class="btn btn-primary" id="btn-guardar-edicion" onclick="guardarEdicion()">Guardar cambios en Sheets</button>
+    </div>
   </div>
 </div>
 
@@ -440,7 +489,7 @@ async function loadAll() {
 // ===== HELPERS =====
 function getLoteNombre(id) {
   const l = cache.lotes.find(x => String(x['ID']) === String(id));
-  return l ? l['Numero Lote'] + (l['Manzana'] ? ' Mz '+l['Manzana'] : '') : id;
+  return l ? l['Numero Lote'] : id;
 }
 function getTeniente(loteId) {
   return cache.tenientes.find(x => String(x['ID Lote']) === String(loteId));
@@ -491,7 +540,7 @@ function renderDashboard() {
     const bc = l['Estado']==='al-dia'?'al-dia':l['Estado']==='atrasado'?'atrasado':'pendiente';
     const bt = l['Estado']==='al-dia'?'Al día':l['Estado']==='atrasado'?'Atrasado':'Pendiente';
     const ib = imp?(imp['Estado']==='pagado'?'<span class="badge al-dia">✓</span>':imp['Estado']==='adeuda'?'<span class="badge atrasado">⚠</span>':'<span class="badge pendiente">?</span>'):'<span style="color:var(--muted);font-size:12px">—</span>';
-    const nombreLote = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+    const nombreLote = l['Numero Lote']||'—';
     return `<tr onclick="verDetalle('${l['ID']}')">
       <td><strong style="color:var(--accent)">${nombreLote}</strong></td>
       <td>${t?.['Nombre']||'—'}</td>
@@ -507,7 +556,7 @@ function renderDashboard() {
   let items = [];
   lotes.filter(l=>l['Estado']==='atrasado').forEach(l => {
     const t = getTeniente(l['ID']);
-    const n = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+    const n = l['Numero Lote']||'—';
     items.push(`<div class="recordatorio vencido"><div class="rec-icon">💰</div><div style="flex:1"><div class="rec-title">${n}</div><div class="rec-sub">Cuota atrasada · ${t?.['Nombre']||'—'}</div></div><span class="rec-badge vencido">URGENTE</span></div>`);
   });
   cache.impuestos.filter(i=>i['Estado']==='adeuda').forEach(i => {
@@ -531,7 +580,7 @@ function renderLotes() {
     const pct = Math.min(100, Math.round((pagadas/total)*100));
     const bc = l['Estado']==='al-dia'?'al-dia':l['Estado']==='atrasado'?'atrasado':'pendiente';
     const bt = l['Estado']==='al-dia'?'Al día':l['Estado']==='atrasado'?'Atrasado':'Pendiente';
-    const nombre = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+    const nombre = l['Numero Lote']||'—';
     return `<div class="card">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:13px">
         <div><div style="font-family:var(--font-head);font-size:17px;font-weight:800;color:var(--accent)">${nombre}</div>
@@ -552,7 +601,10 @@ function renderLotes() {
         <div class="progress-bar"><div class="progress-fill ${pct>50?'ok':''}" style="width:${pct}%"></div></div>
         <div style="font-size:12px;margin-top:4px;color:var(--accent)">${pct}% abonado</div></div>
       </div>
-      <button class="btn btn-secondary" style="font-size:12px" onclick="verDetalle('${l['ID']}')">📋 Ver historial completo</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn btn-secondary" style="font-size:12px" onclick="verDetalle('${l['ID']}')">📋 Ver historial</button>
+        <button class="btn btn-secondary" style="font-size:12px;color:var(--accent);border-color:var(--accent)" onclick="abrirEditar('${l['ID']}')">✏️ Editar</button>
+      </div>
     </div>`;
   }).join('');
 }
@@ -562,7 +614,7 @@ function verDetalle(id) {
   const l = cache.lotes.find(x=>String(x['ID'])===String(id));
   if(!l) return;
   const t = getTeniente(id);
-  const nombre = l['Numero Lote']+(l['Manzana']?' Mz '+l['Manzana']:'');
+  const nombre = l['Numero Lote']||'—';
   const pagos = cache.pagos.filter(p=>String(p['ID Lote'])===String(id)).sort((a,b)=>b['Mes']?.localeCompare(a['Mes']||'')||0);
   const imps = cache.impuestos.filter(i=>String(i['ID Lote'])===String(id)).sort((a,b)=>b['Fecha Verificacion']?.localeCompare(a['Fecha Verificacion']||'')||0);
   document.getElementById('detalle-titulo').textContent = nombre + (t?' — '+t['Nombre']:'');
@@ -573,8 +625,8 @@ function verDetalle(id) {
     <div class="detail-row"><span>Teléfono</span><span class="val">${t?.['Telefono']||'—'}</span></div>
     <div class="detail-row"><span>Email</span><span class="val">${t?.['Email']||'—'}</span></div>
     <div class="detail-row"><span>Domicilio</span><span class="val">${t?.['Domicilio']||'—'}</span></div>
-    <div class="detail-row"><span>Partida inmobiliaria</span><span class="val">${l['Partida Inmobiliaria']||'—'}</span></div>
     <div class="detail-row"><span>Nomenclatura catastral</span><span class="val">${l['Nomenclatura Catastral']||'—'}</span></div>
+    <div class="detail-row"><span>Anticipo pagado</span><span class="val">${fmt(l['Anticipo'])}</span></div>
     <div class="detail-row"><span>Cuota inicial</span><span class="val">${fmt(l['Cuota Inicial'])}</span></div>
     <div class="detail-row"><span>Cuotas pagas / total</span><span class="val">${l['Cuotas Pagas']} / ${l['Cuotas Total']}</span></div>
     <div style="font-family:var(--font-head);font-size:12px;font-weight:700;color:var(--warn);margin:14px 0 8px">HISTORIAL DE PAGOS</div>${ph}
@@ -664,8 +716,8 @@ function cargarDatosImpuesto() {
   if(!l){return}
   document.getElementById('imp-detalle').innerHTML=`
     <div class="detail-row"><span>Lote</span><span class="val">${l['Numero Lote']}${l['Manzana']?' Mz '+l['Manzana']:''}</span></div>
-    <div class="detail-row"><span>Partida inmobiliaria</span><span class="val">${l['Partida Inmobiliaria']||'—'}</span></div>
     <div class="detail-row"><span>Nomenclatura catastral</span><span class="val">${l['Nomenclatura Catastral']||'—'}</span></div>
+    <div class="detail-row"><span>Anticipo pagado</span><span class="val">${fmt(l['Anticipo'])}</span></div>
     <div class="detail-row"><span>Titular</span><span class="val">${t?.['Nombre']||'—'} · DNI ${t?.['DNI']||'—'}</span></div>`;
   document.getElementById('imp-datos-lote').style.display='block';
 }
@@ -756,14 +808,22 @@ async function guardarLote() {
   const btn=document.getElementById('btn-guardar-lote');
   btn.textContent='Guardando en Sheets...'; btn.disabled=true;
   const id=uid();
-  const loteRow=[id,g('nl-numero'),g('nl-manzana'),g('nl-partida'),g('nl-catastral'),g('nl-m2'),g('nl-precio'),g('nl-cuota'),g('nl-ncuotas'),g('nl-pagadas'),g('nl-fecha'),'pendiente',''];
-  const tenienteRow=[id,g('nl-numero')+(g('nl-manzana')?' Mz '+g('nl-manzana'):''),g('nl-nombre'),g('nl-dni'),g('nl-tel'),g('nl-email'),g('nl-domicilio')];
+  const loteRow=[id,g('nl-numero'),g('nl-catastral'),g('nl-m2'),g('nl-precio'),g('nl-anticipo'),g('nl-cuota'),g('nl-ncuotas'),nlCuotasPrevias.length,g('nl-fecha'),'pendiente',''];
+  const tenienteRow=[id,g('nl-numero'),g('nl-nombre'),g('nl-dni'),g('nl-tel'),g('nl-email'),g('nl-domicilio')];
   try {
     await Promise.all([sheetAppend('LOTES',loteRow), sheetAppend('TENIENTES',tenienteRow)]);
+    // Guardar cuotas previas en PAGOS
+    for (const cq of nlCuotasPrevias) {
+      const pagoRow = [uid(), id, g('nl-numero'), g('nl-nombre'), cq.fecha.slice(0,7), cq.monto, cq.fecha, 'Efectivo', 'Cuota previa N°'+cq.num];
+      await sheetAppend('PAGOS', pagoRow);
+      cache.pagos.push({'ID':pagoRow[0],'ID Lote':id,'Numero Lote':g('nl-numero'),'Nombre Teniente':g('nl-nombre'),'Mes':cq.fecha.slice(0,7),'Monto':cq.monto,'Fecha':cq.fecha,'Forma Pago':'Efectivo','Observaciones':'Cuota previa N°'+cq.num});
+    }
     // Update local cache
-    cache.lotes.push({'ID':id,'Numero Lote':loteRow[1],'Manzana':loteRow[2],'Partida Inmobiliaria':loteRow[3],'Nomenclatura Catastral':loteRow[4],'Superficie m2':loteRow[5],'Precio Total':loteRow[6],'Cuota Inicial':loteRow[7],'Cuotas Total':loteRow[8],'Cuotas Pagas':loteRow[9],'Fecha Boleto':loteRow[10],'Estado':'pendiente','Notas':''});
+    cache.lotes.push({'ID':id,'Numero Lote':loteRow[1],'Nomenclatura Catastral':loteRow[2],'Superficie m2':loteRow[3],'Precio Total':loteRow[4],'Anticipo':loteRow[5],'Cuota Inicial':loteRow[6],'Cuotas Total':loteRow[7],'Cuotas Pagas':loteRow[8],'Fecha Boleto':loteRow[9],'Estado':'pendiente','Notas':''});
     cache.tenientes.push({'ID Lote':id,'Numero Lote':tenienteRow[1],'Nombre':tenienteRow[2],'DNI':tenienteRow[3],'Telefono':tenienteRow[4],'Email':tenienteRow[5],'Domicilio':tenienteRow[6]});
-    ['nl-numero','nl-manzana','nl-partida','nl-catastral','nl-m2','nl-precio','nl-cuota','nl-ncuotas','nl-pagadas','nl-fecha','nl-nombre','nl-dni','nl-tel','nl-email','nl-domicilio'].forEach(i=>document.getElementById(i).value='');
+    ['nl-numero','nl-catastral','nl-m2','nl-precio','nl-anticipo','nl-cuota','nl-ncuotas','nl-fecha','nl-nombre','nl-dni','nl-tel','nl-email','nl-domicilio'].forEach(i=>document.getElementById(i).value='');
+    nlCuotasPrevias=[];
+    document.getElementById('nl-cuotas-lista').innerHTML='';
     closeModal('modal-nuevo-lote');
     setSyncState('ok','Lote guardado en Google Sheets ✓');
     renderDashboard();
@@ -771,6 +831,115 @@ async function guardarLote() {
   } catch(e){ setSyncState('err','Error: '+e.message); alert('Error guardando: '+e.message); }
   btn.textContent='✓ Guardar en Sheets'; btn.disabled=false;
 }
+
+// ===== CUOTAS PREVIAS (al registrar lote nuevo) =====
+let nlCuotasPrevias = [];
+
+function agregarCuotaPrevia() {
+  const num = document.getElementById('nl-cq-num').value;
+  const fecha = document.getElementById('nl-cq-fecha').value;
+  const monto = document.getElementById('nl-cq-monto').value;
+  if (!num || !fecha || !monto) { alert('Completá número de cuota, fecha y monto'); return; }
+  nlCuotasPrevias.push({ num, fecha, monto });
+  renderCuotasPrevias();
+  document.getElementById('nl-cq-num').value = parseInt(num)+1;
+  document.getElementById('nl-cq-monto').value = '';
+  document.getElementById('nl-cq-fecha').value = '';
+}
+
+function renderCuotasPrevias() {
+  const lista = document.getElementById('nl-cuotas-lista');
+  if (!nlCuotasPrevias.length) { lista.innerHTML = ''; return; }
+  lista.innerHTML = nlCuotasPrevias.map((c,i) =>
+    `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 8px;background:var(--surface);border-radius:6px;margin-bottom:4px;font-size:13px">
+      <span style="color:var(--muted)">Cuota ${c.num}</span>
+      <span>${new Date(c.fecha+'T12:00:00').toLocaleDateString('es-AR')}</span>
+      <span style="color:var(--ok);font-weight:600">$${Number(c.monto).toLocaleString('es-AR')}</span>
+      <button onclick="quitarCuotaPrevia(${i})" style="background:none;border:none;color:var(--danger);cursor:pointer;font-size:16px">×</button>
+    </div>`
+  ).join('');
+}
+
+function quitarCuotaPrevia(i) {
+  nlCuotasPrevias.splice(i, 1);
+  renderCuotasPrevias();
+}
+
+// ===== EDITAR LOTE =====
+function abrirEditar(id) {
+  const l = cache.lotes.find(x=>String(x['ID'])===String(id));
+  const t = getTeniente(id);
+  if(!l) return;
+  document.getElementById('el-id').value = id;
+  document.getElementById('el-numero').value = l['Numero Lote']||'';
+  document.getElementById('el-catastral').value = l['Nomenclatura Catastral']||'';
+  document.getElementById('el-anticipo').value = l['Anticipo']||'';
+  document.getElementById('el-m2').value = l['Superficie m2']||'';
+  document.getElementById('el-precio').value = l['Precio Total']||'';
+  document.getElementById('el-cuota').value = l['Cuota Inicial']||'';
+  document.getElementById('el-ncuotas').value = l['Cuotas Total']||'';
+  document.getElementById('el-pagadas').value = l['Cuotas Pagas']||'';
+  document.getElementById('el-fecha').value = l['Fecha Boleto']||'';
+  document.getElementById('el-estado').value = l['Estado']||'pendiente';
+  document.getElementById('el-notas').value = l['Notas']||'';
+  document.getElementById('el-nombre').value = t?.['Nombre']||'';
+  document.getElementById('el-dni').value = t?.['DNI']||'';
+  document.getElementById('el-tel').value = t?.['Telefono']||'';
+  document.getElementById('el-email').value = t?.['Email']||'';
+  document.getElementById('el-domicilio').value = t?.['Domicilio']||'';
+  openModal('modal-editar-lote');
+}
+
+async function guardarEdicion() {
+  const g = id => document.getElementById(id).value;
+  const id = g('el-id');
+  const btn = document.getElementById('btn-guardar-edicion');
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+
+  const loteRow = [id, g('el-numero'), g('el-catastral'),
+    g('el-m2'), g('el-precio'), g('el-anticipo'), g('el-cuota'), g('el-ncuotas'), g('el-pagadas'),
+    g('el-fecha'), g('el-estado'), g('el-notas')];
+  const tenienteRow = [id, g('el-numero'),
+    g('el-nombre'), g('el-dni'), g('el-tel'), g('el-email'), g('el-domicilio')];
+
+  try {
+    // Find row numbers in sheets (row 1 = headers, data starts at row 2)
+    const loteIdx = cache.lotes.findIndex(x=>String(x['ID'])===String(id));
+    const tenIdx = cache.tenientes.findIndex(x=>String(x['ID Lote'])===String(id));
+
+    await Promise.all([
+      sheetUpdate('LOTES', loteIdx + 2, loteRow),
+      sheetUpdate('TENIENTES', tenIdx + 2, tenienteRow)
+    ]);
+
+    // Update local cache
+    if(loteIdx >= 0) {
+      cache.lotes[loteIdx] = {'ID':id,'Numero Lote':loteRow[1],'Nomenclatura Catastral':loteRow[2],'Superficie m2':loteRow[3],'Precio Total':loteRow[4],'Anticipo':loteRow[5],'Cuota Inicial':loteRow[6],'Cuotas Total':loteRow[7],'Cuotas Pagas':loteRow[8],'Fecha Boleto':loteRow[9],'Estado':loteRow[10],'Notas':loteRow[11]};
+    }
+    if(tenIdx >= 0) {
+      cache.tenientes[tenIdx] = {'ID Lote':id,'Numero Lote':tenienteRow[1],'Nombre':tenienteRow[2],'DNI':tenienteRow[3],'Telefono':tenienteRow[4],'Email':tenienteRow[5],'Domicilio':tenienteRow[6]};
+    }
+
+    closeModal('modal-editar-lote');
+    setSyncState('ok', 'Lote actualizado en Google Sheets');
+    renderLotes();
+    renderDashboard();
+    alert('Cambios guardados en Google Sheets');
+  } catch(e) {
+    setSyncState('err', 'Error: '+e.message);
+    alert('Error guardando: '+e.message);
+  }
+  btn.textContent = 'Guardar cambios en Sheets'; btn.disabled = false;
+}
+
+async function sheetUpdate(sheetName, rowIndex, row) {
+  const url = API + '?action=update&sheet=' + sheetName + '&clave=' + CLAVE_API + '&rowIndex=' + rowIndex + '&row=' + encodeURIComponent(JSON.stringify(row));
+  const r = await fetch(url);
+  const j = await r.json();
+  if (!j.ok) throw new Error(j.error);
+  return j;
+}
+
 
 // ===== INIT =====
 document.getElementById('fecha-hoy').textContent = new Date().toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
